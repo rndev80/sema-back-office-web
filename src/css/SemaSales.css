@@ -14,16 +14,12 @@
 }
 
 .SalesContainer {
-	grid-column: 2;
-	grid-row:2;
 	display: grid;
-	grid-template-rows: 5px 140px auto;
+	grid-gap: 10px;
 }
 .SalesSummaryContainer {
-	grid-column: 1;
-	grid-row:2;
 	display: grid;
-	grid-template-columns:	auto auto auto;
+	grid-template-columns: repeat(3, 1fr);
 }
 .SalesSummaryItem {
 	display: flex;
@@ -53,15 +49,10 @@
 }
 
 .SalesContentContainer {
-	grid-column: 1;
-	grid-row:3;
 	display: grid;
 	grid-template-columns:	1fr 350px ;
 	grid-template-rows:  62vh 1fr ;
-	grid-gap:5px;
-	background: transparent;
-	padding:10px;
-	max-height:100%;
+	grid-gap: 10px;
 }
 
 .SalesMapItem {
@@ -82,12 +73,10 @@
 }
 
 .SalesBottomContainer {
-	grid-row: 2;
-	grid-column: 1 /span 2;
 	display: grid;
-	grid-template-columns:	1fr 1fr ;
-	grid-template-rows:  1fr 1fr ;
-
+	grid-template-columns:	repeat(2, auto);
+	grid-column-end: span 2;
+	grid-gap: 10px;
 }
 .SalesBottomLeftTop {
 	grid-row: 1;
