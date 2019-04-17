@@ -16,6 +16,7 @@ import SalesByChannelChart from "./Sales/SalesByChannelChart";
 import SalesByChannelTimeChart from "./Sales/SalesByChannelTimeChart";
 import LoadProgress from "../LoadProgress";
 import { utilService } from '../../services';
+import MaterialTable from 'material-table'
 
 let dateFormat = require('dateformat');
 
@@ -67,6 +68,7 @@ class SemaSales extends Component {
 												valueColor = {calcNetRevenueColor(this.props.sales.salesInfo)} />
 						</div>
 					</div>
+
 					<div className = "SalesContentContainer">
 						<div className= "SalesMapItem" id="salesMapId">
 							<SalesMapContainer google={this.props.google} retailers={this.props.sales.salesInfo.customerSales} kiosk={this.props.kiosk} />
@@ -89,6 +91,62 @@ class SemaSales extends Component {
 						</div>
 					</div>
 
+					<div className="SalesList">
+						<MaterialTable
+							options={{
+								headerStyle: styles.tableHeader,
+								showTitle: false
+							}}
+							columns={[
+								{ title: 'Name', field: 'name'},
+								{ title: 'Surname', field: 'surname' },
+								{ title: 'Birth Year', field: 'birthYear', type: 'numeric' },
+								{
+								title: 'Birth Place',
+								field: 'birthCity',
+								lookup: { 34: 'İstanbul', 63: 'Şanlıurfa' },
+								},
+							]}
+							data={[]}
+							editable={{
+								onRowAdd: newData =>
+								new Promise((resolve, reject) => {
+									setTimeout(() => {
+									{
+										/* const data = this.state.data;
+									data.push(newData);
+									this.setState({ data }, () => resolve()); */
+									}
+									resolve()
+									}, 1000)
+								}),
+								onRowUpdate: (newData, oldData) =>
+								new Promise((resolve, reject) => {
+									setTimeout(() => {
+									{
+										/* const data = this.state.data;
+								const index = data.indexOf(oldData);
+								data[index] = newData;                
+								this.setState({ data }, () => resolve()); */
+									}
+									resolve()
+									}, 1000)
+								}),
+								onRowDelete: oldData =>
+								new Promise((resolve, reject) => {
+									setTimeout(() => {
+									{
+										/* let data = this.state.data;
+								const index = data.indexOf(oldData);
+								data.splice(index, 1);
+								this.setState({ data }, () => resolve()); */
+									}
+									resolve()
+									}, 1000)
+								}),
+							}}
+						/>
+					</div>
 				</div>
 			</React.Fragment>
 		);
@@ -278,6 +336,12 @@ const calcColor = (now, last) => {
 	}
 	return "gray"
 };
+
+const styles = {
+	tableHeader: {
+		fontSize: '14px'
+	}
+}
 
 function mapStateToProps(state) {
 	return {
