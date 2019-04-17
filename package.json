@@ -15,6 +15,7 @@
     "jquery": "^3.3.1",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.11",
+    "material-table": "^1.32.0",
     "moment": "^2.21.0",
     "prop-types": "^15.6.2",
     "rc-progress": "~2.2.5",
