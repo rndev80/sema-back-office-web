@@ -16,7 +16,8 @@ function initializeCustomer() {
 			customersByIncome:[],
 			customersByDistance:[],
 			customersByGender:[]
-		}
+		},
+		dataset: []
 	}
 }
 
@@ -30,7 +31,35 @@ function fetchCustomer(params) {
 	};
 }
 
+function fetchCustomersDataset(params, filtered) {
+	return dispatch => {
+		let url = '/sema/dataset/customers?siteId=' + params.kioskID;
 
+		if(params.hasOwnProperty("startDate") && filtered){
+			url = url + "&begin-date=" + utilService.formatDateForUrl(params.startDate);
+		}
+		if(params.hasOwnProperty("endDate") && filtered){
+			url = url + "&end-date=" + utilService.formatDateForUrl(params.endDate);
+		}
+
+		axiosService
+			.get(url)
+			.then(response => {
+				if (response.status === 200){
+					return response.data;
+			} else {
+					return [];
+				}
+			})
+			.then(customerDataset => {
+				// console.log( JSON.stringify(customerDataset));
+				dispatch({type: allActions.RECEIVE_CUSTOMERS_DATASET, data: customerDataset});
+			})
+			.catch(e => {
+				alert(e);
+			})
+	};
+}
 
 const fetchCustomerData = ( params) => {
 	return new Promise (async(resolve, reject ) => {
@@ -148,5 +177,6 @@ const updateCustomer = customerData => {
 export const customerActions = {
 	receiveCustomer,
 	initializeCustomer,
-	fetchCustomer
+	fetchCustomer,
+	fetchCustomersDataset
 };
