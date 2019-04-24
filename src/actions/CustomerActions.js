@@ -56,7 +56,7 @@ function fetchCustomersDataset(params, filtered) {
 				dispatch({type: allActions.RECEIVE_CUSTOMERS_DATASET, data: customerDataset});
 			})
 			.catch(e => {
-				alert(e);
+				// console.log(e);
 			})
 	};
 }
