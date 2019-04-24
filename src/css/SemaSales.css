@@ -16,7 +16,9 @@
 .SalesContainer {
 	display: grid;
 	grid-gap: 10px;
+	grid-template-columns: repeat(auto-fit, 100%);
 }
+
 .SalesSummaryContainer {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
@@ -61,6 +63,7 @@
 	/*height: 62vh;*/
 	background: #fff;
 }
+
 .SalesListItem {
 	grid-row: 1;
 	grid-column: 2;
@@ -110,4 +113,8 @@
 	border-color: rgb(101, 139, 194);
     border-style: solid;
     border-width: medium;
+}
+
+.MuiTableCell-body-121 {
+	font-size: inherit !important;
 }
