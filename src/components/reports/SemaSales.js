@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import '../../App.css';
 import '../../css/SemaSales.css';
-import {connect} from "react-redux";
-import {bindActionCreators} from "redux";
+import { connect } from "react-redux";
+import { bindActionCreators } from "redux";
 import * as healthCheckActions from '../../actions/healthCheckActions';
 import { withRouter } from 'react-router'
 import SemaServiceError from "../SeamaServiceError";
@@ -16,7 +16,9 @@ import SalesByChannelChart from "./Sales/SalesByChannelChart";
 import SalesByChannelTimeChart from "./Sales/SalesByChannelTimeChart";
 import LoadProgress from "../LoadProgress";
 import { utilService } from '../../services';
-import MaterialTable from 'material-table'
+import MaterialTable from 'material-table';
+import sort from 'fast-sort';
+import moment from 'moment-timezone';
 
 let dateFormat = require('dateformat');
 
@@ -24,126 +26,234 @@ class SemaSales extends Component {
 	constructor(props, context) {
 		super(props, context);
 		console.log("SeamaSales - Constructor");
+
+		this.state = {
+			selectedReceipt: null
+		}
+
+		// We need this as a select, not a text input
+		// That's why we're doing this ugly mapping
+		this.paymentTypesMapping = {
+			'Cash': 'Cash',
+			'Cash/Loan': 'Cash/Loan',
+			'Mobile': 'Mobile',
+			'Mobile/Loan': 'Mobile/Loan',
+			'Card': 'Card',
+			'Card/Loan': 'Card/Loan'
+		};
+
+		this.columns = [
+			{
+				title: 'ID',
+				field: 'id',
+				readonly: true,
+				hidden: true
+			},
+			{
+				title: 'Created Date',
+				field: 'created_at',
+				type: 'datetime',
+				readonly: true
+			},
+			{
+				title: 'Updated Date',
+				field: 'updated_at',
+				type: 'datetime',
+				readonly: true
+			},
+			{
+				title: 'Customer Name',
+				field: 'customer_account_id',
+				lookup: {},
+				emptyValue: 'N/A'
+			},
+			{
+				title: 'Product SKU',
+				field: 'product_id',
+				lookup: {},
+				emptyValue: 'N/A'
+			},
+			{
+				title: 'Quantity',
+				field: 'quantity',
+				type: 'numeric',
+				emptyValue: 'N/A'
+			},
+			{
+				title: 'Unit Price',
+				field: 'unit_price',
+				type: 'numeric',
+				emptyValue: 'N/A',
+				readonly: true
+			},
+			{
+				title: 'Total Price',
+				field: 'total_price',
+				type: 'numeric',
+				emptyValue: 'N/A',
+				readonly: true
+			},
+			{
+				title: 'Payment Type',
+				field: 'payment_type',
+				lookup: this.paymentTypesMapping,
+				emptyValue: 'Cash'
+			},
+			{
+				title: 'Total Cogs',
+				field: 'total_cogs',
+				type: 'numeric',
+				emptyValue: 'N/A',
+				readonly: true
+			},
+			{
+				title: 'Status',
+				field: 'active',
+				lookup: {
+					false: 'Inactive',
+					true: 'Active'
+				}
+			}
+		];
+
+		this._prepareColumns = this._prepareColumns.bind(this);
+		this._prepareData = this._prepareData.bind(this);
+		this._formatReceipt = this._formatReceipt.bind(this);
 	}
 
 	render() {
 		return this.showContent();
 	}
 
-	showContent(props){
-		if( this.props.healthCheck.server !== "Ok" ){
+	showContent(props) {
+		if (this.props.healthCheck.server !== "Ok") {
 			return SemaServiceError(props);
-		}else  if( this.props.healthCheck.database !== "Ok" ){
+		} else if (this.props.healthCheck.database !== "Ok") {
 			return SemaDatabaseError(props)
 		}
 		return this.showSales();
 
 	}
 
-	showSales(){
+	showSales() {
 		return (
 			<React.Fragment>
 				<div className="SalesProgress">
-					<LoadProgress/>
+					<LoadProgress />
 				</div>
 
 				<div className="SalesContainer">
-					<div className = "SalesSummaryContainer">
-						<div className ="SalesSummaryItem">
+					<div className="SalesSummaryContainer">
+						<div className="SalesSummaryItem">
 							<SalesSummaryPanel1 title="Total Customers" date={this.getDateSince(this.props.sales.salesInfo.totalCustomers)}
-												value={formatTotalCustomers(this.props.sales.salesInfo)}
-												delta = {calcCustomerDelta( this.props.sales.salesInfo) }
-												valueColor = {calcColor(this.props.sales.salesInfo.totalCustomers.periods[0].value, this.props.sales.salesInfo.totalCustomers.periods[1].value)} />
+								value={formatTotalCustomers(this.props.sales.salesInfo)}
+								delta={calcCustomerDelta(this.props.sales.salesInfo)}
+								valueColor={calcColor(this.props.sales.salesInfo.totalCustomers.periods[0].value, this.props.sales.salesInfo.totalCustomers.periods[1].value)} />
 						</div>
-						<div className ="SalesSummaryItem">
+						<div className="SalesSummaryItem">
 							<SalesSummaryPanel1 title="Total Revenue" date={this.getDateSince(this.props.sales.salesInfo.totalRevenue)}
-												value={utilService.formatDollar(this.props.sales.salesInfo.currencyUnits, this.props.sales.salesInfo.totalRevenue.total)}
-												delta = {calcRevenueDelta(this.props.sales.salesInfo)}
-												valueColor = {calcColor(this.props.sales.salesInfo.totalRevenue.periods[0].value, this.props.sales.salesInfo.totalRevenue.periods[1].value)} />
+								value={utilService.formatDollar(this.props.sales.salesInfo.currencyUnits, this.props.sales.salesInfo.totalRevenue.total)}
+								delta={calcRevenueDelta(this.props.sales.salesInfo)}
+								valueColor={calcColor(this.props.sales.salesInfo.totalRevenue.periods[0].value, this.props.sales.salesInfo.totalRevenue.periods[1].value)} />
 						</div>
-						<div className ="SalesSummaryItem">
+						<div className="SalesSummaryItem">
 							<SalesSummaryPanel1 title="Gross Margin" date={this.getDateSince(this.props.sales.salesInfo.totalRevenue)}
-												value={calcNetRevenue( this.props.sales.salesInfo )}
-												delta = {calcNetRevenueDelta(this.props.sales.salesInfo)}
-												valueColor = {calcNetRevenueColor(this.props.sales.salesInfo)} />
+								value={calcNetRevenue(this.props.sales.salesInfo)}
+								delta={calcNetRevenueDelta(this.props.sales.salesInfo)}
+								valueColor={calcNetRevenueColor(this.props.sales.salesInfo)} />
 						</div>
 					</div>
 
-					<div className = "SalesContentContainer">
-						<div className= "SalesMapItem" id="salesMapId">
+					<div className="SalesContentContainer">
+						<div className="SalesMapItem" id="salesMapId">
 							<SalesMapContainer google={this.props.google} retailers={this.props.sales.salesInfo.customerSales} kiosk={this.props.kiosk} />
 						</div>
-						<div className= "SalesListItem">
-							<div><p style={{textAlign:"center"}}>{formatRetailSalesHeader(this.props.sales.salesInfo.customerSales)}</p></div>
-							<SalesRetailerList retailers={this.props.sales.salesInfo.customerSales}/>
+						<div className="SalesListItem">
+							<div><p style={{ textAlign: "center" }}>{formatRetailSalesHeader(this.props.sales.salesInfo.customerSales)}</p></div>
+							<SalesRetailerList retailers={this.props.sales.salesInfo.customerSales} />
 						</div>
-						<div className= "SalesBottomContainer">
-							<div className= "SalesBottomRight">
-								<SalesByChannelTimeChart chartData={this.props.sales}/>
+						<div className="SalesBottomContainer">
+							<div className="SalesBottomRight">
+								<SalesByChannelTimeChart chartData={this.props.sales} />
 								{/*<SalesSummaryPanel2 title="Revenue/Customer"*/}
-													{/*value={ formatRevenuePerCustomer(this.props.sales.salesInfo)}*/}
-													{/*valueColor = "rgb(24, 55, 106)"*/}
-													{/*title2 = {formatNoOfCustomers(this.props.sales.salesInfo)} />*/}
+								{/*value={ formatRevenuePerCustomer(this.props.sales.salesInfo)}*/}
+								{/*valueColor = "rgb(24, 55, 106)"*/}
+								{/*title2 = {formatNoOfCustomers(this.props.sales.salesInfo)} />*/}
 							</div>
-							<div className= "SalesBottomLeft">
-								<SalesByChannelChart chartData={this.props.sales}/>
+							<div className="SalesBottomLeft">
+								<SalesByChannelChart chartData={this.props.sales} />
 							</div>
 						</div>
 					</div>
 
 					<div className="SalesList">
 						<MaterialTable
+							parentChildData={(row, rows) => rows.find(a => a.id === row.receipt_id)}
+							onRowClick={(event, selectedReceipt) => {
+								// We only want to be able to select receipts, not line items
+								if (!selectedReceipt.receipt_id) {
+									this.setState({ selectedReceipt })
+								}
+							}}
 							options={{
 								headerStyle: styles.tableHeader,
-								showTitle: false
+								showTitle: false,
+								columnsButton: true,
+								loadingType: 'linear',
+								pageSize: 10,
+								exportButton: false, // We'll activate this once this feature allows to export the whole table, not just the visible rows 
+								pageSizeOptions: [5, 10, 15, 20, 25, 30],
+								addRowPosition: 'first',
+								rowStyle: rowData => ({
+									backgroundColor: (this.state.selectedReceipt && this.state.selectedReceipt.tableData.id === rowData.tableData.id) ? '#EEE' : '#FFF'
+								})
+								// exportFileName: 'dlohaiti-sales' add the filters in the name
 							}}
-							columns={[
-								{ title: 'Name', field: 'name'},
-								{ title: 'Surname', field: 'surname' },
-								{ title: 'Birth Year', field: 'birthYear', type: 'numeric' },
-								{
-								title: 'Birth Place',
-								field: 'birthCity',
-								lookup: { 34: 'İstanbul', 63: 'Şanlıurfa' },
-								},
-							]}
-							data={[]}
+							columns={this._prepareColumns()}
+							data={this._prepareData()}
 							editable={{
-								onRowAdd: newData =>
-								new Promise((resolve, reject) => {
-									setTimeout(() => {
-									{
-										/* const data = this.state.data;
-									data.push(newData);
-									this.setState({ data }, () => resolve()); */
-									}
-									resolve()
-									}, 1000)
-								}),
+								onRowAdd: receipt =>
+									new Promise((resolve, reject) => {
+										const formattedReceipt = this._formatReceipt(receipt);
+
+										console.log(JSON.stringify(formattedReceipt));
+
+										setTimeout(() => {
+											{
+												/* const data = this.state.data;
+												const index = data.indexOf(oldData);
+												data[index] = newData;
+												this.setState({ data }, () => resolve()); */
+											}
+											resolve()
+										}, 1000)
+									}),
+
 								onRowUpdate: (newData, oldData) =>
-								new Promise((resolve, reject) => {
-									setTimeout(() => {
-									{
-										/* const data = this.state.data;
-								const index = data.indexOf(oldData);
-								data[index] = newData;                
-								this.setState({ data }, () => resolve()); */
-									}
-									resolve()
-									}, 1000)
-								}),
+									new Promise((resolve, reject) => {
+										setTimeout(() => {
+											{
+												/* const data = this.state.data;
+												const index = data.indexOf(oldData);
+												data[index] = newData;                
+												this.setState({ data }, () => resolve()); */
+											}
+											resolve()
+										}, 1000)
+									}),
+
 								onRowDelete: oldData =>
-								new Promise((resolve, reject) => {
-									setTimeout(() => {
-									{
-										/* let data = this.state.data;
-								const index = data.indexOf(oldData);
-								data.splice(index, 1);
-								this.setState({ data }, () => resolve()); */
-									}
-									resolve()
-									}, 1000)
-								}),
+									new Promise((resolve, reject) => {
+										setTimeout(() => {
+											{
+												/* let data = this.state.data;
+												const index = data.indexOf(oldData);
+												data.splice(index, 1);
+												this.setState({ data }, () => resolve()); */
+											}
+											resolve()
+										}, 1000)
+									}),
 							}}
 						/>
 					</div>
@@ -152,18 +262,70 @@ class SemaSales extends Component {
 		);
 	}
 
-	getDateSince( metric){
-		if( metric.periods[1].beginDate != null ){
-			switch( metric.period ){
+	_prepareColumns() {
+		// An ID - Name mapping of customers. Sorted alphabetically
+		let orderedCustomers = sort([...this.props.customer.dataset]).asc(customer => customer.name);
+		let customerMapping = orderedCustomers.reduce((final, customer) => {
+			final[`${customer.id}`] = customer.name;
+			return final;
+		}, {});
+
+		const customerNameColumn = {
+			title: 'Customer Name',
+			field: 'customer_account_id',
+			lookup: customerMapping,
+			emptyValue: 'N/A'
+		};
+
+		// An ID - SKU mapping of products. Sorted alphabetically
+		let orderedProducts = sort([...this.props.products]).asc(product => product.sku);
+		let productMapping = orderedProducts.reduce((final, product) => {
+			final[`${product.id}`] = product.sku;
+			return final;
+		}, {});
+
+		const productSkuColumn = {
+			title: 'Product SKU',
+			field: 'product_id',
+			lookup: productMapping,
+			emptyValue: 'N/A'
+		};
+
+		// Add the "Customer Name" column right after the "Updated Date" one
+		this.columns.splice(3, 1, customerNameColumn);
+		// Add the "Product SKU" column right after the "Customer Name" one
+		this.columns.splice(4, 1, productSkuColumn);
+
+		return this.columns;
+	}
+
+	_prepareData() {
+		let orderedSales = sort([...this.props.sales.dataset]).desc(sale => sale.created_at);
+
+		return orderedSales.map(row => {
+			row.created_at = moment.tz(row.created_at, moment.tz.guess()).format('YYYY-MM-DD HH:mm:ss');
+			row.updated_at = moment.tz(row.updated_at, moment.tz.guess()).format('YYYY-MM-DD HH:mm:ss');
+
+			return row;
+		});
+	}
+
+	_formatReceipt(receipt) {
+		return receipt;
+	}
+
+	getDateSince(metric) {
+		if (metric.periods[1].beginDate != null) {
+			switch (metric.period) {
 				case "month":
 					return " since " + dateFormat(convertDateToUTC(new Date(Date.parse(metric.periods[1].beginDate))), "mmm, yyyy");
 				case "year":
-					return " since " + dateFormat(convertDateToUTC(new Date( Date.parse(metric.periods[1].beginDate))), "yyyy");
+					return " since " + dateFormat(convertDateToUTC(new Date(Date.parse(metric.periods[1].beginDate))), "yyyy");
 				case "none":
 				default:
 					return "";
 			}
-		}else{
+		} else {
 			return "N/A"
 		}
 	}
@@ -174,18 +336,18 @@ function convertDateToUTC(date) {
 	return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
-const calcNetRevenue = salesInfo =>{
-	if( salesInfo.totalRevenue.total &&  salesInfo.totalCogs.total ){
-		return utilService.formatDollar( salesInfo.currencyUnits, salesInfo.totalRevenue.total - salesInfo.totalCogs.total);
-	}else{
+const calcNetRevenue = salesInfo => {
+	if (salesInfo.totalRevenue.total && salesInfo.totalCogs.total) {
+		return utilService.formatDollar(salesInfo.currencyUnits, salesInfo.totalRevenue.total - salesInfo.totalCogs.total);
+	} else {
 		return "N/A";
 	}
 }
 
-const calcNetRevenueDelta = salesInfo =>{
-	if( salesInfo.totalRevenue.period === "none"){
+const calcNetRevenueDelta = salesInfo => {
+	if (salesInfo.totalRevenue.period === "none") {
 		return "";
-	}else {
+	} else {
 		if (salesInfo.totalRevenue.periods[0].value && salesInfo.totalCogs.periods[0].value &&
 			salesInfo.totalRevenue.periods[1].value && salesInfo.totalCogs.periods[1].value) {
 			return calcChange(salesInfo, salesInfo.totalRevenue.periods[0].value - salesInfo.totalCogs.periods[0].value,
@@ -195,38 +357,38 @@ const calcNetRevenueDelta = salesInfo =>{
 		}
 	}
 }
-const calcCustomerDelta = salesInfo =>{
-	if( salesInfo.totalCustomers.period === "none") {
+const calcCustomerDelta = salesInfo => {
+	if (salesInfo.totalCustomers.period === "none") {
 		return "";
-	}else{
+	} else {
 		return calcChange(salesInfo, salesInfo.totalCustomers.periods[0].value, salesInfo.totalCustomers.periods[1].value);
 	}
 }
-const calcRevenueDelta = salesInfo =>{
-	if( salesInfo.totalRevenue.period === "none") {
+const calcRevenueDelta = salesInfo => {
+	if (salesInfo.totalRevenue.period === "none") {
 		return "";
-	}else{
+	} else {
 		return calcChange(salesInfo, salesInfo.totalRevenue.periods[0].value, salesInfo.totalRevenue.periods[1].value);
 	}
 }
 
-const calcNetRevenueColor = salesInfo =>{
-	if( salesInfo.totalRevenue.periods[0].value &&  salesInfo.totalCogs.periods[0].value &&
-		salesInfo.totalRevenue.periods[1].value &&  salesInfo.totalCogs.periods[1].value ){
-		return calcColor( salesInfo.totalRevenue.periods[0].value - salesInfo.totalCogs.periods[0].value,
-			       salesInfo.totalRevenue.periods[1].value - salesInfo.totalCogs.periods[1].value )
-	}else{
+const calcNetRevenueColor = salesInfo => {
+	if (salesInfo.totalRevenue.periods[0].value && salesInfo.totalCogs.periods[0].value &&
+		salesInfo.totalRevenue.periods[1].value && salesInfo.totalCogs.periods[1].value) {
+		return calcColor(salesInfo.totalRevenue.periods[0].value - salesInfo.totalCogs.periods[0].value,
+			salesInfo.totalRevenue.periods[1].value - salesInfo.totalCogs.periods[1].value)
+	} else {
 		return "gray";
 	}
 }
 
-const formatTotalCustomers = salesInfo =>{
-	return ( salesInfo.totalCustomers.total ) ? salesInfo.totalCustomers.total : "N/A";
+const formatTotalCustomers = salesInfo => {
+	return (salesInfo.totalCustomers.total) ? salesInfo.totalCustomers.total : "N/A";
 }
 
-const formatRetailSalesHeader = (retailSales) =>{
-	if( retailSales.length > 0 ){
-		switch( retailSales[0].period){
+const formatRetailSalesHeader = (retailSales) => {
+	if (retailSales.length > 0) {
+		switch (retailSales[0].period) {
 			case "none":
 				return "Total Sales";
 			case "year":
@@ -294,21 +456,21 @@ const formatRetailSalesHeader = (retailSales) =>{
 
 
 const calcChange = (salesInfo, now, last) => {
-	if( !now  || !last ){
+	if (!now || !last) {
 		return "N/A"
-	}else{
+	} else {
 		// Pro-rate the current period of it is incomplete
 		let nowDate = new Date();
-		switch( salesInfo.totalCustomers.period ){
+		switch (salesInfo.totalCustomers.period) {
 			case "year":
 				let periodYear = new Date(Date.parse(salesInfo.totalCustomers.periods[0].beginDate)).getFullYear();
-				if( nowDate.getFullYear() === periodYear ){
+				if (nowDate.getFullYear() === periodYear) {
 					let start = new Date(periodYear, 0, 0);
 					let diff = nowDate - start;
 					let oneDay = 1000 * 60 * 60 * 24;
 					let dayOfYear = Math.floor(diff / oneDay);
 
-					now = ((365*now)/dayOfYear)
+					now = ((365 * now) / dayOfYear)
 				}
 				break;
 			case "month":
@@ -316,38 +478,40 @@ const calcChange = (salesInfo, now, last) => {
 				let period = new Date(Date.parse(salesInfo.totalCustomers.periods[0].beginDate));
 				periodYear = period.getFullYear();
 				let periodMonth = period.getMonth();
-				if( nowDate.getFullYear() === periodYear && nowDate.getMonth() === periodMonth ) {
+				if (nowDate.getFullYear() === periodYear && nowDate.getMonth() === periodMonth) {
 					let dayOfMonth = nowDate.getDate();
-					let daysInMonth =  new Date(periodYear, periodMonth+1, 0).getDate(); // Note: this is a trick to get the last day of the month
-					now = ((daysInMonth*now)/dayOfMonth)
+					let daysInMonth = new Date(periodYear, periodMonth + 1, 0).getDate(); // Note: this is a trick to get the last day of the month
+					now = ((daysInMonth * now) / dayOfMonth)
 				}
 				break;
 		}
-		return ((now/last)*100 -100).toFixed(2) + "%";
+		return ((now / last) * 100 - 100).toFixed(2) + "%";
 	}
 
 };
 const calcColor = (now, last) => {
-	if( !now  || !last){
+	if (!now || !last) {
 		return "gray"
-	}else{
-		if(now > last ) return "green";
-		else if(now < last ) return "red";
+	} else {
+		if (now > last) return "green";
+		else if (now < last) return "red";
 	}
 	return "gray"
 };
 
 const styles = {
 	tableHeader: {
-		fontSize: '14px'
+		fontSize: 'inherit'
 	}
 }
 
 function mapStateToProps(state) {
 	return {
-		sales:state.sales,
-		kiosk:state.kiosk,
-		healthCheck: state.healthCheck
+		sales: state.sales,
+		kiosk: state.kiosk,
+		healthCheck: state.healthCheck,
+		products: state.products,
+		customer: state.customer
 	};
 }
 
