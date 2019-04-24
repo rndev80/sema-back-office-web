@@ -25,7 +25,8 @@ function initializeSales() {
 			customerSales:[],
 			salesByChannel: {beginDate: null, endDate: null, datasets: []},
 			salesByChannelHistory: {beginDate: null, endDate: null, datasets: []}
-		}
+		},
+		dataset: []
 	}
 }
 
@@ -209,10 +210,41 @@ const updateSales = salesData => {
 	}
 };
 
+function fetchSalesDataset(params) {
+	return dispatch => {
+		let url = '/sema/dataset/sales?siteId=' + params.kioskID;
+
+		if( params.hasOwnProperty("startDate") ){
+			url = url + "&beginDate=" + utilService.formatDateForUrl(params.startDate);
+		}
+		if( params.hasOwnProperty("endDate") ){
+			url = url + "&endDate=" + utilService.formatDateForUrl(params.endDate);
+		}
+
+		axiosService
+			.get(url)
+			.then(response => {
+				if (response.status === 200){
+					return response.data;
+				} else {
+					return [];
+				}
+			})
+			.then(salesDataset => {
+				// console.log( JSON.stringify(salesDataset));
+				dispatch({type: allActions.RECEIVE_SALES_DATASET, data: salesDataset});
+			})
+			.catch(e => {
+				// alert(e);
+			})
+	};
+}
+
 export const salesActions = {
 	receiveSales,
 	receiveSalesByChannel,
 	initializeSales,
 	fetchSales,
+	fetchSalesDataset,
 	forceUpdate
 };
