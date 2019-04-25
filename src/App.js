@@ -11,6 +11,7 @@ import {
   salesActions,
   waterOperationsActions
 } from './actions';
+import { getProducts } from './actions/ProductActions';
 import { Router } from 'react-router-dom';
 import { Page, SemaLogin } from './components';
 import { history } from './utils';
@@ -51,6 +52,9 @@ class App extends Component {
 					if( ! this.props.sales.loaded && this.props.kiosk.selectedKiosk && this.props.kiosk.selectedKiosk.kioskID ) {
 						this.props.salesActions.fetchSales(params);
 					}
+					this.props.getProducts();
+					this.props.customerActions.fetchCustomersDataset(params);
+					this.props.salesActions.fetchSalesDataset(params);
 					break;
 				default:
 					break;
@@ -89,7 +93,8 @@ function mapDispatchToProps(dispatch) {
 		volumeActions: bindActionCreators(volumeActions, dispatch),
 		customerActions: bindActionCreators(customerActions, dispatch),
 		salesActions: bindActionCreators(salesActions, dispatch),
-		waterOperationsActions: bindActionCreators(waterOperationsActions, dispatch)
+		waterOperationsActions: bindActionCreators(waterOperationsActions, dispatch),
+    getProducts: bindActionCreators(getProducts, dispatch)
   };
 }
 
