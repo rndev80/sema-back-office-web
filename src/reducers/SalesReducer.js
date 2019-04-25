@@ -1,6 +1,7 @@
 import {
 	RECEIVE_SALES,
 	RECEIVE_SALES_DATASET,
+	UPDATE_SALES_DATASET,
 	salesActions
 } from '../actions'
 
@@ -17,6 +18,11 @@ export default function sales(state =init(), action) {
 			newState = {...state};
 			newState.dataset = action.data;
 			console.log('RECEIVE_SALES_DATASET Action');
+			return newState;
+		case UPDATE_SALES_DATASET:
+			newState = {...state};
+			newState.dataset.push(...action.data);
+			console.log('UPDATE_SALES_DATASET Action');
 			return newState;
 		default:
 			return state;
