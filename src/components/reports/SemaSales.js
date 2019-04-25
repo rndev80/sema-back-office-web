@@ -11,7 +11,7 @@ import SalesSummaryPanel1 from "./Sales/SalesSummaryPanel1";
 // import SalesSummaryPanel2 from "./Sales/SalesSummaryPanel2";
 import SalesMapContainer from './Sales/SalesMapContainer';
 import SalesRetailerList from './Sales/SalesRetailerList';
-import * as salesActions from '../../actions/SalesActions';
+import { salesActions } from '../../actions';
 import SalesByChannelChart from "./Sales/SalesByChannelChart";
 import SalesByChannelTimeChart from "./Sales/SalesByChannelTimeChart";
 import LoadProgress from "../LoadProgress";
@@ -214,7 +214,7 @@ class SemaSales extends Component {
 								showTitle: false,
 								columnsButton: true,
 								loadingType: 'linear',
-								pageSize: 10,
+								pageSize: 5,
 								exportButton: false, // We'll activate this once this feature allows to export the whole table, not just the visible rows 
 								pageSizeOptions: [5, 10, 15, 20, 25, 30],
 								addRowPosition: 'first',
@@ -242,9 +242,7 @@ class SemaSales extends Component {
 											.catch(err => {
 												this.setState({ isTableLoading: false });
 
-												console.log(err);
-
-												alert('Something went wrong. Please, refresh and try again.');
+												alert(`Something went wrong: ${JSON.stringify(err.response)}`);
 												resolve();
 											});
 									}),
