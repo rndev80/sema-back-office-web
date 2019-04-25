@@ -19,6 +19,7 @@ import { utilService } from '../../services';
 import MaterialTable from 'material-table';
 import sort from 'fast-sort';
 import moment from 'moment-timezone';
+import uuidv1 from 'uuid/v1';
 
 let dateFormat = require('dateformat');
 
@@ -28,7 +29,8 @@ class SemaSales extends Component {
 		console.log("SeamaSales - Constructor");
 
 		this.state = {
-			selectedReceipt: null
+			selectedReceipt: null,
+			isTableLoading: false
 		}
 
 		// We need this as a select, not a text input
@@ -124,7 +126,7 @@ class SemaSales extends Component {
 
 		this._prepareColumns = this._prepareColumns.bind(this);
 		this._prepareData = this._prepareData.bind(this);
-		this._formatSale = this._formatSale.bind(this);
+		this._prepareSale = this._prepareSale.bind(this);
 	}
 
 	render() {
@@ -194,6 +196,7 @@ class SemaSales extends Component {
 
 					<div className="SalesList">
 						<MaterialTable
+							isLoading={this.state.isTableLoading}
 							parentChildData={(row, rows) => rows.find(r => r.id === row.receipt_id)}
 							onRowClick={(event, selectedRow) => {
 								// We only want to be able to select receipts, not line items
@@ -225,19 +228,25 @@ class SemaSales extends Component {
 							editable={{
 								onRowAdd: sale =>
 									new Promise((resolve, reject) => {
-										const formattedSale = this._formatSale(sale);
 
-										alert(JSON.stringify(formattedSale));
+										this.setState({ isTableLoading: true });
 
-										setTimeout(() => {
-											{
-												/* const data = this.state.data;
-												const index = data.indexOf(oldData);
-												data[index] = newData;
-												this.setState({ data }, () => resolve()); */
-											}
-											resolve()
-										}, 1000)
+										const finalSale = this._prepareSale(sale);
+
+										this.props.salesActions.createSale(finalSale)
+											.then(() => {
+												this.setState({ isTableLoading: false });
+
+												resolve();
+											})
+											.catch(err => {
+												this.setState({ isTableLoading: false });
+
+												console.log(err);
+
+												alert('Something went wrong. Please, refresh and try again.');
+												resolve();
+											});
 									}),
 
 								onRowUpdate: (newData, oldData) =>
@@ -321,17 +330,17 @@ class SemaSales extends Component {
 		});
 	}
 
-	_formatSale(receipt) {
-		receipt.id = moment.tz(receipt.created_at, moment.tz.guess()).format();
+	_prepareSale(sale) {
+		sale.id = moment.tz(sale.created_at, moment.tz.guess()).format();
+		sale.kiosk_id = this.props.kiosk.selectedKiosk.kioskID;
+		sale.user_id = this.props.auth.currentUser.id;
+		sale.uuid = uuidv1();
 
-		const currentProduct = this.props.products.reduce((final, product) => {
-			if (product.id === receipt.product_id) return product;
-			return final;
-		}, {});
+		if (this.state.selectedReceipt) {
+			sale.receipt_id = this.state.selectedReceipt.id;
+		}
 
-		receipt.currency_code = currentProduct.price_currency;
-
-		return receipt;
+		return sale;
 	}
 
 	getDateSince(metric) {
@@ -531,7 +540,8 @@ function mapStateToProps(state) {
 		kiosk: state.kiosk,
 		healthCheck: state.healthCheck,
 		products: state.products,
-		customer: state.customer
+		customer: state.customer,
+		auth: state.auth
 	};
 }
 
