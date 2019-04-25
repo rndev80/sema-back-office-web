@@ -83,15 +83,21 @@ class SemaSales extends Component {
 				title: 'Unit Price',
 				field: 'unit_price',
 				type: 'numeric',
-				emptyValue: 'N/A',
+				emptyValue: 0.00,
 				readonly: true
 			},
 			{
 				title: 'Total Price',
 				field: 'total_price',
 				type: 'numeric',
-				emptyValue: 'N/A',
+				emptyValue: 0.00,
 				readonly: true
+			},
+			{
+				title: 'Amount Loan',
+				field: 'amount_loan',
+				type: 'numeric',
+				emptyValue: 0.00
 			},
 			{
 				title: 'Payment Type',
@@ -103,7 +109,7 @@ class SemaSales extends Component {
 				title: 'Total Cogs',
 				field: 'total_cogs',
 				type: 'numeric',
-				emptyValue: 'N/A',
+				emptyValue: 0.00,
 				readonly: true
 			},
 			{
@@ -118,7 +124,7 @@ class SemaSales extends Component {
 
 		this._prepareColumns = this._prepareColumns.bind(this);
 		this._prepareData = this._prepareData.bind(this);
-		this._formatReceipt = this._formatReceipt.bind(this);
+		this._formatSale = this._formatSale.bind(this);
 	}
 
 	render() {
@@ -188,11 +194,16 @@ class SemaSales extends Component {
 
 					<div className="SalesList">
 						<MaterialTable
-							parentChildData={(row, rows) => rows.find(a => a.id === row.receipt_id)}
-							onRowClick={(event, selectedReceipt) => {
+							parentChildData={(row, rows) => rows.find(r => r.id === row.receipt_id)}
+							onRowClick={(event, selectedRow) => {
 								// We only want to be able to select receipts, not line items
-								if (!selectedReceipt.receipt_id) {
-									this.setState({ selectedReceipt })
+								if (!selectedRow.receipt_id) {
+									// We make it a toggle
+									if (this.state.selectedReceipt && selectedRow.id === this.state.selectedReceipt.id) {
+										this.setState({ selectedReceipt: null });
+									} else {
+										this.setState({ selectedReceipt: selectedRow });
+									}
 								}
 							}}
 							options={{
@@ -207,16 +218,16 @@ class SemaSales extends Component {
 								rowStyle: rowData => ({
 									backgroundColor: (this.state.selectedReceipt && this.state.selectedReceipt.tableData.id === rowData.tableData.id) ? '#EEE' : '#FFF'
 								})
-								// exportFileName: 'dlohaiti-sales' add the filters in the name
+								// exportFileName: 'dlohaiti-sales' add the toolbar filters to the name
 							}}
 							columns={this._prepareColumns()}
 							data={this._prepareData()}
 							editable={{
-								onRowAdd: receipt =>
+								onRowAdd: sale =>
 									new Promise((resolve, reject) => {
-										const formattedReceipt = this._formatReceipt(receipt);
+										const formattedSale = this._formatSale(sale);
 
-										console.log(JSON.stringify(formattedReceipt));
+										alert(JSON.stringify(formattedSale));
 
 										setTimeout(() => {
 											{
@@ -235,7 +246,7 @@ class SemaSales extends Component {
 											{
 												/* const data = this.state.data;
 												const index = data.indexOf(oldData);
-												data[index] = newData;                
+												data[index] = newData;
 												this.setState({ data }, () => resolve()); */
 											}
 											resolve()
@@ -310,7 +321,16 @@ class SemaSales extends Component {
 		});
 	}
 
-	_formatReceipt(receipt) {
+	_formatSale(receipt) {
+		receipt.id = moment.tz(receipt.created_at, moment.tz.guess()).format();
+
+		const currentProduct = this.props.products.reduce((final, product) => {
+			if (product.id === receipt.product_id) return product;
+			return final;
+		}, {});
+
+		receipt.currency_code = currentProduct.price_currency;
+
 		return receipt;
 	}
 
