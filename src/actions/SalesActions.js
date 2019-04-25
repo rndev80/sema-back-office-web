@@ -240,11 +240,37 @@ function fetchSalesDataset(params) {
 	};
 }
 
+function updateSalesDataset(remoteSales) {
+	return dispatch => {
+		dispatch({ type: allActions.UPDATE_SALES_DATASET, data: remoteSales})
+	}
+}
+
+function createSale(sale) {
+	let url = '/sema/receipt';
+
+	return axiosService
+		.post(url, sale)
+		.then(response => {
+			if (response.status === 200){
+				return response.data;
+			} else {
+				return [];
+			}
+		})
+		.then(updateSalesDataset)
+		.catch(e => {
+			return e;
+			// alert(e);
+		});
+}
+
 export const salesActions = {
 	receiveSales,
 	receiveSalesByChannel,
 	initializeSales,
 	fetchSales,
 	fetchSalesDataset,
-	forceUpdate
+	forceUpdate,
+	createSale
 };
